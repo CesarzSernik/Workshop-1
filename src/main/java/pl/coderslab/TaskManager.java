@@ -1,94 +1,115 @@
 package pl.coderslab;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Scanner;
-
 
 public class TaskManager {
 
     public static void main(String[] args) {
 
         try {
-            File tasks = new File("tasks.csv");
             Scanner input = new Scanner(System.in);
-
-            int i = getFileLength();
-
-            String[][] tasksArray = new String[i][3];
-
-            elementsToTasksArray(tasksArray);
 
             OptionsMenu();
 
-            switch (input.next()) {
-                case "add":
-                    AddTask(tasksArray);
-                    break;
-                case "remove":
-                    RemoveTask(input, i, tasksArray);
-                    break;
-                case "list":
-                    ListTasks(tasksArray);
-                    break;
-                case "exit":
-                    ExitApp(tasksArray);
-                    break;
-                default:
-                    OptionsMenu();
+            while (input.hasNextLine()) {
+                String inputOption = input.nextLine();
 
+                int i = getFileLength();
+
+                String[][] tasksArray = new String[i][3];
+
+                elementsToTasksArray(tasksArray);
+
+                switch (inputOption) {
+                    case "add":
+                        AddTask(tasksArray);
+                        OptionsMenu();
+                        break;
+                    case "remove":
+                        RemoveTask(input, i, tasksArray);
+                        OptionsMenu();
+                        break;
+                    case "list":
+                        ListTasks(tasksArray);
+                        OptionsMenu();
+                        break;
+                    case "exit":
+                        ExitApp(tasksArray);
+                        break;
+                    default:
+                        OptionsMenu();
+
+                }
             }
         } catch (FileNotFoundException e) {
             System.out.println("Nie znaleziono pliku tasks.");
+            System.exit(0);
         }
     }
 
     private static void ExitApp(String[][] tasksArray) throws FileNotFoundException {
         RewriteTasksToFile(tasksArray);
         System.out.println(ConsoleColors.RED_BOLD + "Farewell." + ConsoleColors.RESET);
+        System.exit(0);
     }
 
     private static void RemoveTask(Scanner input, int i, String[][] tasksArray) throws FileNotFoundException {
         System.out.println("Please provide task's identification number to remove it:");
-
-        while (!input.hasNextInt()) {
-            System.out.println("Please provide a number in a correct format:");
+        while (input.hasNextLine()) {
+            String number = input.nextLine();
+            if (!NumberUtils.isParsable(number)) {
+                System.out.println("Please provide a number in a correct format:");
+            }
+            else if (Integer.parseInt(number) < 0) {
+                System.out.println("Position does not exist. Please provide a correct ID number:");
+            }
+            else if (Integer.parseInt(number) > tasksArray.length) {
+                System.out.println("Position does not exist. Please provide a correct ID number:");
+            }else{
+                tasksArray = ArrayUtils.remove(tasksArray, Integer.parseInt(number));
+                System.out.println("Task successfully removed.");
+                break;
+            }
         }
-        while (input.nextInt() < 0) {
-            System.out.println("Position does not exist. Please provide a correct ID number:");
-        }
-        while (input.nextInt() > i) {
-            System.out.println("Position does not exist. Please provide a correct ID number:");
-        }
-        int elementToRemove = input.nextInt();
-        ArrayUtils.remove(tasksArray, elementToRemove);
 
-        RewriteTasksToFile(tasksArray);
 
-        System.out.println("Task successfully removed.");
     }
 
     private static void RewriteTasksToFile(String[][] tasksArray) throws FileNotFoundException {
-        int i = getFileLength();
+        Path location = Paths.get("tasks.csv");
+
+        String[] tasksInLines = new String[tasksArray.length];
+        for (int i = 0; i < tasksArray.length; i++) {
+            tasksInLines[i] = String.join(",", tasksArray[i]);
+        }
 
         try {
-            FileWriter fileWriter = new FileWriter("tasks.csv", false);
-            for (int p = 0; p < i; p++) {
+            Files.write(location, Arrays.asList(tasksInLines));
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+      /*  try {
+            FileWriter fileWriter = new FileWriter("tasks.csv", true);
+            for (int p = 0; p < tasksArray.length; p++) {
                 for (int e = 0; e < 3; e++) {
-                    fileWriter.append(tasksArray[p][e] + ", ");
+                    fileWriter.append(Arrays.toString(new String[]{tasksArray[p][e]})).append(", ");
                 }
-                System.out.print("\n");
+                fileWriter.append("\n");
             }
         } catch (IOException e) {
             System.out.println("Nie ma czego plądrować");
-        }
+        }*/
     }
 
     private static void ListTasks(String[][] tasksArray) {
@@ -102,20 +123,23 @@ public class TaskManager {
     }
 
     private static void AddTask(String[][] tasksArray) {
-        File tasks = new File("tasks.csv");
         Scanner input = new Scanner(System.in);
 
         System.out.println("Please add task description:");
         String newTaskDescription = input.nextLine();
 
-        System.out.println("Please add task due date (Pattern: Y-M-D):");
-        String pattern = "YYYY-MM-DD";
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-        Locale locale = new Locale("en", "PL");
-        while (!input.equals(simpleDateFormat)) {
-            System.out.println("Please enter a date in a specified pattern (YYYY-MM-DD).");
-        }
-        String newTaskDate = simpleDateFormat.format(input.nextLine());
+        //String pattern = "YYYY-MM-DD";
+
+        //Date date = new Date(input.next());
+        //SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+        //String stringDate = simpleDateFormat.format(date);
+
+        //while (!date.equals(simpleDateFormat)) {
+        //    System.out.println("Please enter a date in a specified pattern (YYYY-MM-DD).");
+        //}
+        //String newTaskDate = simpleDateFormat.format(input.nextLine());
+
+        String stringDate = GetDate(input);
 
         System.out.println("Is your task important (true/false):");
         while (!input.hasNextBoolean()) {
@@ -124,18 +148,61 @@ public class TaskManager {
         boolean newTaskImportance = input.nextBoolean();
 
         tasksArray = Arrays.copyOf(tasksArray, tasksArray.length + 1);
+        tasksArray[tasksArray.length - 1] = new String[3];
         tasksArray[tasksArray.length - 1][0] = newTaskDescription;
-        tasksArray[tasksArray.length - 1][1] = newTaskDate;
+        tasksArray[tasksArray.length - 1][1] = stringDate;
         tasksArray[tasksArray.length - 1][2] = Boolean.toString(newTaskImportance);
 
-        try {
-            FileWriter fileWriter = new FileWriter("tasks.csv", true);
-            fileWriter.append(tasksArray[tasksArray.length - 1][0] + ", ");
-            fileWriter.append(tasksArray[tasksArray.length - 1][1] + ", ");
-            fileWriter.append(tasksArray[tasksArray.length - 1][2]);
-        } catch (IOException e) {
-            System.out.println("Nie ma czego plądrować");
+        System.out.println("New task created.");
+
+        //try {
+        //    FileWriter fileWriter = new FileWriter("tasks.csv", true);
+        //    fileWriter.append(tasksArray[tasksArray.length - 1][0]).append(", ");
+        //   fileWriter.append(tasksArray[tasksArray.length - 1][1]).append(", ");
+        //    fileWriter.append(tasksArray[tasksArray.length - 1][2]);
+        //} catch (IOException e) {
+        //   System.out.println("Nie ma czego plądrować");
+        //}
+    }
+
+    private static String GetDate(Scanner input) {
+
+        System.out.println("Please add task due date (Pattern: YYYY-MM-DD):");
+
+        while (input.hasNextLine()) {
+
+            String stringDate = input.nextLine();
+            char[] dateToChar = stringDate.toCharArray();
+            try {
+                if (dateToChar[4] != '-') {
+                    System.out.println("Given date does not match the pattern. Try again:");
+                } else if (dateToChar[7] != '-') {
+                    System.out.println("Given date does not match the pattern. Try again:");
+                } else if (!NumberUtils.isParsable(String.valueOf(dateToChar[0]))) {
+                    System.out.println("Given date does not match the pattern. Try again:");
+                } else if (!NumberUtils.isParsable(String.valueOf(dateToChar[1]))) {
+                    System.out.println("Given date does not match the pattern. Try again:");
+                } else if (!NumberUtils.isParsable(String.valueOf(dateToChar[2]))) {
+                    System.out.println("Given date does not match the pattern. Try again:");
+                } else if (!NumberUtils.isParsable(String.valueOf(dateToChar[3]))) {
+                    System.out.println("Given date does not match the pattern. Try again:");
+                } else if (!NumberUtils.isParsable(String.valueOf(dateToChar[5]))) {
+                    System.out.println("Given date does not match the pattern. Try again:");
+                } else if (!NumberUtils.isParsable(String.valueOf(dateToChar[6]))) {
+                    System.out.println("Given date does not match the pattern. Try again:");
+                } else if (!NumberUtils.isParsable(String.valueOf(dateToChar[8]))) {
+                    System.out.println("Given date does not match the pattern. Try again:");
+                } else if (!NumberUtils.isParsable(String.valueOf(dateToChar[9]))) {
+                    System.out.println("Given date does not match the pattern. Try again:");
+                } else {
+                    return stringDate;
+                }
+            } catch (ArrayIndexOutOfBoundsException e) {
+                System.out.println("Given date does not match the pattern. Try again:");
+            }
+
         }
+        return "";
     }
 
     private static void elementsToTasksArray(String[][] tasksArray) throws FileNotFoundException {
@@ -175,4 +242,66 @@ public class TaskManager {
             System.out.println(option);
         }
     }
+
+    /*private static String GetDate(Scanner input) {
+        while (input.hasNextLine()) {
+            String stringDate = input.nextLine();
+            char[] dateToChar = stringDate.toCharArray();
+            if (dateToChar[4] != '-') {
+                System.out.println("Given date does not match the pattern. Try again:");
+                stringDate = input.nextLine();
+                dateToChar = stringDate.toCharArray();
+            }
+            else if (dateToChar[7] != '-') {
+                System.out.println("Given date does not match the pattern. Try again:");
+                stringDate = input.nextLine();
+                dateToChar = stringDate.toCharArray();
+            }
+            else if (NumberUtils.isParsable(String.valueOf(dateToChar[0]))) {
+                System.out.println("Given date does not match the pattern. Try again:");
+                stringDate = input.nextLine();
+                dateToChar = stringDate.toCharArray();
+            }
+            else if (NumberUtils.isParsable(String.valueOf(dateToChar[1]))) {
+                System.out.println("Given date does not match the pattern. Try again:");
+                stringDate = input.nextLine();
+                dateToChar = stringDate.toCharArray();
+            }
+            else if (NumberUtils.isParsable(String.valueOf(dateToChar[2]))) {
+                System.out.println("Given date does not match the pattern. Try again:");
+                stringDate = input.nextLine();
+                dateToChar = stringDate.toCharArray();
+            }
+            else if (NumberUtils.isParsable(String.valueOf(dateToChar[3]))) {
+                System.out.println("Given date does not match the pattern. Try again:");
+                stringDate = input.nextLine();
+                dateToChar = stringDate.toCharArray();
+            }
+            else if (NumberUtils.isParsable(String.valueOf(dateToChar[5]))) {
+                System.out.println("Given date does not match the pattern. Try again:");
+                stringDate = input.nextLine();
+                dateToChar = stringDate.toCharArray();
+            }
+            else if (NumberUtils.isParsable(String.valueOf(dateToChar[6]))) {
+                System.out.println("Given date does not match the pattern. Try again:");
+                stringDate = input.nextLine();
+                dateToChar = stringDate.toCharArray();
+            }
+            else if (NumberUtils.isParsable(String.valueOf(dateToChar[8]))) {
+                System.out.println("Given date does not match the pattern. Try again:");
+                stringDate = input.nextLine();
+                dateToChar = stringDate.toCharArray();
+            }
+            else if (NumberUtils.isParsable(String.valueOf(dateToChar[9]))) {
+                System.out.println("Given date does not match the pattern. Try again:");
+                stringDate = input.nextLine();
+                dateToChar = stringDate.toCharArray();
+            }
+            else{
+                return stringDate;
+            }
+
+        }
+        return "";
+    }*/
 }
